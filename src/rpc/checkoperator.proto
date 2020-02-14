@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package starlingfoundries.operator;
+option go_package = "operator";
+// ============================================================================
+// Primitives
+// ============================================================================
+service Operator {
+
+	//sends the signed transaction from the client to the operator.
+	rpc Send(Transaction) returns (SendResponse);
+	rpc OperatorTarget(Empty) returns (OperatorTargetResp);
+	rpc LastTransaction(Address) returns (SendResponse);
+	}
+
+message ByteArray{
+
+	bytes data                 = 1;
+	}
+
+message SendResponse{
+
+	ByteArray address                   = 1;
+	//tranid should be the chain-addressable transaction id for use in ex: viewblock.io
+	bytes tranid                        = 2;
+	enum Status {
+		UNDEFINED                       = 0;
+		RECIEVED                        = 1;
+		PROCESSED                       = 2;
+		REJECTED                        = 3;     
+	}   
+	Status status                       = 3;
+	uint64 nonce                        = 4;
+}
+//Empty only requires the calling user's pubkey
+message Empty {
+	ByteArray pubkey                    = 1;
+}
+
+//this object is injected straight into the code field of the encapsulating transaction
+message Transaction
+{
+	uint32 version          = 1;
+	string fromAddr         = 2;
+	string toAddr           = 3;
+	double amount           = 4;
+}
+
+message OperatorTargetResp
+{
+	bytes contractAddr     = 1;
+}
+
+message Address{
+	string Address 	       =1;
+	}

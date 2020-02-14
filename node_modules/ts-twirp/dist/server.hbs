@@ -1,0 +1,45 @@
+import * as pb from './{{protoFilename}}.pb';
+import * as http from 'http';
+import { TwirpContentType, handleRequest } from 'ts-twirp';
+
+type MaybePromise<T> = Promise<T> | T;
+
+export const {{lowercase service}}PathPrefix = '/twirp/{{namespace}}.{{service}}/';
+
+export interface RPCHandlers {
+  {{#each methods as |method|}}
+  {{lowercase method.name}}(request: pb.{{../namespace}}.{{method.requestType}}): MaybePromise<pb.{{../namespace}}.I{{method.responseType}}>;
+  {{/each}}
+}
+
+export function create{{service}}Handler(rpcHandlers: RPCHandlers) {
+  return function {{lowercase service}}Handler(req: http.IncomingMessage, res: http.ServerResponse) {
+    handleRequest(req, res, route, rpcHandlers);
+  };
+}
+
+function route(url: string | undefined, contentType: TwirpContentType) {
+  switch (url) {
+    {{#each methods as |method|}}
+    case '/twirp/{{../namespace}}.{{../service}}/{{method.name}}':
+      return contentType === TwirpContentType.Protobuf ? handleProtobuf{{method.name}} : handleJSON{{method.name}};
+    {{/each}}
+    default:
+      return;
+  }
+}
+{{#each methods as |method|}}
+
+async function handleProtobuf{{method.name}}(data: Buffer, handlers: RPCHandlers): Promise<Uint8Array> {
+  const request = pb.{{../namespace}}.{{method.requestType}}.decode(data);
+  const response = await handlers.{{lowercase method.name}}(request);
+  return pb.{{../namespace}}.{{method.responseType}}.encode(response).finish();
+}
+
+async function handleJSON{{method.name}}(data: Buffer, handlers: RPCHandlers): Promise<string> {
+  const json = JSON.parse(data.toString('utf8'));
+  const request = pb.{{../namespace}}.{{method.requestType}}.fromObject(json);
+  const response = await handlers.{{lowercase method.name}}(request);
+  return JSON.stringify(pb.{{../namespace}}.{{method.responseType}}.create(response));
+}
+{{/each}}

@@ -1,0 +1,66 @@
+import pb from './{{protoFilename}}.pb';
+import {{shortNamespace}} = pb.{{namespace}};
+import { createProtobufRPCImpl, createJSONRPCImpl, JSONRPCImpl } from 'ts-twirp';
+
+interface Create{{service}}ClientParams {
+  /**
+   * The host portion of the URL to use.
+   */
+  host: string;
+
+  /**
+   * The port used to call the service.
+   */
+  port: number;
+}
+
+export function create{{service}}ProtobufClient(
+  params: Create{{service}}ClientParams
+): {{service}} {
+  const rpcImpl = createProtobufRPCImpl({
+    host: params.host,
+    port: params.port,
+    path: '/twirp/{{namespace}}.{{service}}/',
+  });
+
+  return {{shortNamespace}}.{{service}}.create(rpcImpl, false, false);
+}
+
+export function create{{service}}JSONClient(
+  params: Create{{service}}ClientParams
+): {{service}} {
+  const rpcImpl = createJSONRPCImpl({
+    host: params.host,
+    port: params.port,
+    path: '/twirp/{{namespace}}.{{service}}/',
+  });
+
+  return new {{service}}JSONClient(rpcImpl);
+}
+
+export interface {{service}} {
+  {{#each methods as |method|}}
+  {{lowercase method.name}}(request: {{../shortNamespace}}.I{{method.requestType}}): Promise<{{../shortNamespace}}.{{method.responseType}}>;
+  {{/each}}
+}
+
+export class {{service}}JSONClient implements {{service}} {
+  private rpcImpl: JSONRPCImpl;
+
+  constructor(rpcImpl: JSONRPCImpl) {
+    this.rpcImpl = rpcImpl;
+  }
+  {{#each methods as |method|}}
+
+  public async {{lowercase method.name}}(request: {{../shortNamespace}}.I{{method.requestType}}): Promise<{{../shortNamespace}}.{{method.responseType}}> {
+    const requestMessage = {{../shortNamespace}}.{{method.requestType}}.create(request);
+    const response = await this.rpcImpl(requestMessage, '{{method.name}}');
+    const verificationError = {{../shortNamespace}}.{{method.responseType}}.verify(response);
+    if (verificationError) {
+      return Promise.reject(verificationError);
+    }
+
+    return {{../shortNamespace}}.{{method.responseType}}.create(response);
+  }
+  {{/each}}
+}
